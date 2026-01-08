@@ -1,0 +1,121 @@
+
+reset;	                        # Limpar as variaveis
+model modelo_PV_BAT_EV_EI_3.mod;   # Chamar o modelo
+data modelo_PV_BAT_EV_dadosdolar2.dat;	# Chamar os dados do modelo
+
+
+############################################################
+# SOLUÇÃO
+for {h in H, s in SE}{
+	fix P_ind[h,s] := 0;
+	}
+
+for {k in K, h in H, s in SE}{
+	fix P_EV_d[k,h,s] := 0;
+	}
+
+
+option solver cplex;
+option cplex_options "mipdisplay=4 mipgap=0 mipinterval = 1000 absmipgap=0";
+# option cplex_options "mipdisplay=4 mipinterval = 1000 time = 300";
+# option cplex_options "mipgap=0 absmipgap=0";
+
+solve fo;
+
+
+param E_BAT_imp{H,S};
+for {h in H, s in S}{
+let E_BAT_imp[h,s] := sum {b in B} (P_BAT_c[b,h,s] - P_BAT_d[b,h,s]) ;
+}
+
+param P_BAT_c_imp{H,S};
+for {h in H, s in S}{
+let P_BAT_c_imp[h,s] := sum {b in B} P_BAT_c[b,h,s];
+}
+
+param P_BAT_d_imp{H,S};
+for {h in H, s in S}{
+let P_BAT_d_imp[h,s] := sum {b in B} P_BAT_d[b,h,s];
+}
+############################################################
+# VISUALIZAÇÃO 
+printf '\n\nParametros usados no teste: \n';
+
+printf '\n\nBATERIAS: \n';
+display eta_c_BAT; #eficiencia de carga das baterias
+display eta_d_BAT; #eficiencia de descarga das baterias 
+display c_b; #custo de cada bateria
+display P_BAT_nom; #potencia nominal de cada bateria
+display E_BAT_nom; #energia da bateria nominal
+
+printf '\n\nVEICULOS ELETRICOS: \n';
+
+display eta_c_VE; #eficiencia de carga dos VEs
+display eta_d_VE; #eficiencia de descarga dos VEs
+display SOC_max; #SOC maximo do VE (kWh)
+display SOC_min; #SOC minimo do VE (kWh)
+display Pcargamax; # Potência máxima de carregamento do VE (kW)
+
+printf '\n\nPAINEIS: \n';
+display c_p; #custo de cada painel fotovoltaico
+
+printf '\n\nSISTEMA E MODELO: \n';
+
+display P_EC_nom; #demanda do edificio 
+display lambda_ls; # taxa de load shift pra deslocamento de carga do edificio
+display alpha; # taxa de trazer o valor presente
+display pi; # probabilidade de cada cenário ocorrer
+display taxa_juros; # 10% de taxa de juros para trazer o valor presente
+display vida_util; # Vida útil da bateria do VE (anos)
+display dias_ano; # dias úteis no ano
+# display omega;  # porcentagem da capacidade das baterias
+display lambda1; # penalização para deslocamento de carga do edificio
+display lambda2; #penalização para descarga do VE
+display lambda3; # peso para penalizar a potência indisponível 
+display alpha;
+
+printf '\n\nSOLUCAO: \n';
+
+
+display E_BAT_imp;
+
+display P_BAT_c_imp;
+display P_BAT_d_imp;
+# display E_BAT;
+# display P_BAT_c;
+# display P_BAT_d;
+display E_EV;
+display P_EV_c;
+display P_EV_d;
+display P_EC;
+display P_ind;
+# printf '\nNumero de paineis fotovoltaicos: %s\n', sum {p in P}z[p];
+display P_pv;
+display P_LS;
+display lambda_ls;
+display _ampl_time;
+# for {s in S}{
+# display E_BAT;
+#printf '\nEnergia das baterias: %s\n', sum {b in B} E_BAT[b,s];
+#printf '\nSoc Dos VEs: %s\n', E_EV[k];
+# }
+printf '\nCarga da Comunidade: %s\n', sum {h in H} P_EC_nom[h];
+printf '\n\nFuncao objetivo: %s\n', fo;
+printf '\nNumero de paineis fotovoltaicos: %s\n', sum {p in P}z[p];
+printf '\nNumero de baterias: %s\n', sum {b in B} y[b];
+# printf '\nNumero de veiculos eletricos: %s\n', sum {k in K} x[k];
+printf '\nCusto de instalacao: %s\n',  sum {p in P} z[p] * c_p + sum {b in B} y[b] * c_b;
+
+printf '\nCusto de penalizacao lambda1: %s\n',   alpha * sum{s in SE} pi[s] * (sum{h in H} (P_LS_POS[h,s] + P_LS_NEG[h,s]) * lambda1[h]); 
+printf '\nCusto de penalizacao lambda2 - compra potencia VE: %s\n',  alpha *  lambda2 * sum{k in K, se in SE, h in H} pi[se]*(P_EV_d[k,h,se]);
+printf '\nCusto de penalizacao lambda3 - potencia nao suprida: %s\n',  alpha * lambda3 * sum{se in SE, h in H} pi[se] * P_ind[h,se];
+
+
+printf '\nCusto de penalizacao final: %s\n', 
+  alpha * ( (sum{s in S} pi[s] * (sum{h in H} P_LS_ABS[h,s] * lambda1[h])) + 
+    (lambda2 * sum{k in K, se in SE, h in H} pi[se] * P_EV_d[k,h,se]) +
+	(lambda3 * sum{se in SE, h in H} pi[se] * P_ind[h,se]));
+
+# for {s in S}{
+ # printf 'soma: %s\n', sum{h in H} (P_LS_POS[h,s] + P_LS_NEG[h,s]);
+# }

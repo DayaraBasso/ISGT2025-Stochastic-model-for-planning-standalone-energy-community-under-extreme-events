@@ -1,0 +1,145 @@
+#DADOS
+
+
+set S := 1 2 3 4;  #conjunto dos cenários
+set SN := 1 2 3 4;      #conjunto dos cenários normais
+set SE := 1 2 3 4;	  # conjunto dos cenários extremos
+
+
+
+param eta_d_VE:= 0.95; #eficiencia de descarga do VE
+param eta_c_VE:= 0.95; #eficiencia de carga do VE
+param eta_c_BAT:= 0.95; #eficiencia de carga das baterias
+param eta_d_BAT:= 0.95; #eficiencia de descarga das baterias
+param c_b:= 5000; #custo de cada bateria ($)
+param P_BAT_nom:= 15; #potencia nominal de cada bateria (kWh)
+param E_BAT_nom := 15; # estado de carga nominal de cada bateria 
+param lambda_ls:= 0.3; #taxa de load shift para deslocamento de carga
+param Pcargamax:= 20; # Potência máxima de carga e descarga do VE (kW)
+param SOC_max:= 60;   #estado de carga máximo dos VEs
+param SOC_min:= 6;    #estado de carga mínimo dos VEs
+param Noct:= 44; # Temperatura nominal do painel (ºC)
+param Voc:= 41.6;  # Tensão de circuito aberto (V)
+param Isc:= 18.32;  # Corrente de curto circuito (A)
+param Kv:= -0.25; # Coeficiente de temperatura para a tensão
+param Ki:= 0.04; # Coeficiente de temperatura para a corrente
+param Vmppt:= 34.7; # Tensão  em ponto de máxima potência (V)
+param Imppt:= 17.3;  # Corrente em ponto de máxima potência (A)
+param Ta:= 25; # Temperatura ambiente (ºC)
+param c_p:= 100; # Custo de cada painel fotovoltaico ($)
+
+
+
+param taxa_juros:= 0.1; # 10% de taxa de juros para trazer o valor presente
+param vida_util:= 10; # Vida útil da bateria do VE (anos)
+param dias_ano:= 365; # Dias úteis do ano (dias)
+param lambda2 := 1; #peso para penalizar descarga do VE 
+param lambda3 := 5; #peso para penalizar a potência indisponível 
+param omegaEV := 0.5; # porcentagem da capacidade das baterias
+
+# probabilidade de cada cenário ocorrer
+param pi:= 
+	1	 0.30	
+	2	 0.40
+	3	 0.10
+	4	 0.15	
+	5	 0.03
+	6	 0.02;
+
+
+# carga nominal do edificio
+param P_EC_nom:= 
+	1	  5
+	2     5   
+	3     5  
+	4     5  
+	5     5  
+	6     5  
+	7     5  
+	8     5
+	9     10
+	10    10
+	11    10
+	12    10
+	13    10
+	14    10
+	15    10
+	16    10
+	17    10
+	18    10
+	19    10
+	20    5
+	21    5
+	22    5
+	23    5
+	24    5;  
+
+ 
+
+# penalização para deslocamento de carga do edificio
+param lambda1:= 
+	1	  0.5
+	2     0.5   
+	3     0.5   
+	4     0.5   
+	5     0.5   
+	6     0.5   
+	7     0.5   
+	8     0.1
+	9     0.1
+	10    0.1
+	11    0.1
+	12    0.1
+	13    0.1
+	14    0.1
+	15    0.1
+	16    0.1
+	17    0.1
+	18    0.1
+	19    0.5
+	20    0.5
+	21    0.5
+	22    0.5
+	23    0.5
+	24    0.5;  
+ 
+
+# perfis fotovoltaicos
+	
+param G:    1       2         3 		4			5			6	:= 
+		1	0.00	0.0000	0.0000		0			0			0.00
+		2	0.00	0.0000	0.0000		0			0			0.00
+		3	0.00	0.0000	0.0000		0			0			0.00
+		4	0.00	0.0000	0.0000		0			0			0.00
+		5	0.00	0.0000	0.0000		0			0			0.00
+		6	0.04	0.0067	0.0037		0.00296		0.00148		0.00
+		7	0.18	0.0529	0.0251		0.02008		0.01004		0.00
+		8	0.37	0.1754	0.1134		0.09072		0.04536		0.00
+		9	0.55	0.2348	0.2133		0.17064		0.08532		0.00
+		10	0.71	0.2730	0.0719		0.05752		0.02876		0.00
+		11	0.84	0.3926	0.0909		0.07272		0.03636		0.00
+		12	0.94	0.3966	0.0946		0.07568		0.03784		0.00
+		13	0.99	0.5400	0.0669		0.05352		0.02676		0.00
+		14	0.99	0.5820	0.1214		0.09712		0.04856		0.00
+		15	0.95	0.6627	0.2144		0.17152		0.08576		0.00
+		16	0.83	0.4575	0.1745		0.1396		0.0698		0.00
+		17	0.54	0.3937	0.0989		0.07912		0.03956		0.00
+		18	0.38	0.2062	0.1393		0.11144		0.05572		0.00
+		19	0.09	0.0935	0.0505		0.0404		0.0202		0.00
+		20	0.00	0.0000	0.0000		0			0			0.00
+		21	0.00	0.0000	0.0000		0			0			0.00
+		22	0.00	0.0000	0.0000		0			0			0.00
+		23	0.00	0.0000	0.0000		0			0			0.00
+		24	0.00	0.0000	0.0000		0			0			0.00;	
+
+# calculo da potência fotovoltaica
+for {h in H, s in S}{
+	let FF := (Vmppt * Imppt)/(Voc * Isc);
+	let Tc[h,s] := Ta + (Noct - 20)/0.8 * G[h,s];
+	let Ic[h,s] := G[h,s] * (Isc + Ki * (Tc[h,s] - 25));
+	let Vc[h,s] := Voc + Kv * Tc[h,s];
+	let P_pv_m[h,s] := (FF * Vc[h,s] * Ic[h,s]) / 1000;
+}
+
+# Cálculo de alpha: parâmetro que representa a taxa de trazer o valor presente
+let alpha:= dias_ano * (1-(1+taxa_juros)^(-vida_util))/taxa_juros
