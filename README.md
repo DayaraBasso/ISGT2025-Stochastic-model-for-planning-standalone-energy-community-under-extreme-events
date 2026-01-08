@@ -18,4 +18,3 @@ Model implemented in AMPL and solved with CPLEX.
 
 ".run" file represents the main script to execute the model with the data;
 
-".svg" files are figures of the results obtained with the test data.
